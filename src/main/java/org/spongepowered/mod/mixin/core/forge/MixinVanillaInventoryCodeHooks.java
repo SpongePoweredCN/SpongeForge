@@ -48,6 +48,7 @@ import org.spongepowered.common.event.SpongeCommonEventFactory;
 import org.spongepowered.common.interfaces.IMixinInventory;
 import org.spongepowered.common.item.inventory.EmptyInventoryImpl;
 import org.spongepowered.common.item.inventory.util.InventoryUtil;
+import org.spongepowered.mod.item.inventory.adapter.IItemHandlerAdapter;
 
 import javax.annotation.Nullable;
 
@@ -84,10 +85,17 @@ public abstract class MixinVanillaInventoryCodeHooks {
     @Inject(remap = false, method = "extractHook", cancellable = true, locals = LocalCapture.CAPTURE_FAILEXCEPTION,
             at = @At(value = "INVOKE", target = "Lorg/apache/commons/lang3/tuple/Pair;getKey()Ljava/lang/Object;"))
     private static void onExtractHook(IHopper hopper, CallbackInfoReturnable<Boolean> cir, Pair<IItemHandler, Object> itemHandlerResult) {
-        Inventory source = toInventory(itemHandlerResult.getValue(), itemHandlerResult.getKey());
-        if (source.totalItems() != 0) {
-            if (SpongeCommonEventFactory.callTransferPre(source, toInventory(hopper)).isCancelled()) {
-                cir.setReturnValue(false);
+        IItemHandler itemHandler = itemHandlerResult.getKey();
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            // Find first item that can be extracted
+            if (!itemHandler.extractItem(i, 1, true).isEmpty()) {
+                Inventory source = toInventory(itemHandlerResult.getValue(), itemHandler);
+                if (source.totalItems() != 0) {
+                    if (SpongeCommonEventFactory.callTransferPre(source, toInventory(hopper)).isCancelled()) {
+                        cir.setReturnValue(false);
+                    }
+                }
+                break;
             }
         }
     }
@@ -192,8 +200,7 @@ public abstract class MixinVanillaInventoryCodeHooks {
         if (itemHandler instanceof Inventory) {
             return ((Inventory) itemHandler);
         }
-        // TODO handle IItemHandlers that were not mixed into
-        return new EmptyInventoryImpl(null);
+        return new IItemHandlerAdapter(itemHandler);
     }
 
     private static IMixinInventory forCapture(Object toCapture) {
