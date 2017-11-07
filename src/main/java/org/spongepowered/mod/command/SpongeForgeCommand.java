@@ -52,7 +52,7 @@ public class SpongeForgeCommand extends SpongeCommandFactory {
                 .setShortDescription(Text.of("List currently installed mods"))
                 .setPermission("sponge.command.mods")
                 .parameters(Parameter.plugin().optional().setKey(MOD_KEY).build())
-                .setExecutor((src, args) -> {
+                .setExecutor((cause, src, args) -> {
                     if (args.hasAny(MOD_KEY)) {
                         sendContainerMeta(src, args,  MOD_KEY);
                     } else {
